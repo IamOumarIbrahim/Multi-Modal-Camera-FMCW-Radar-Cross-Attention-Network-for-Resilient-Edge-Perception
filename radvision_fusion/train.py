@@ -1,8 +1,3 @@
-# =============================================================================
-# STUDENT-CODING-AGENT NOTICE:
-# Style rules, including line-by-line comments and prefixed variable names,
-# are applied internally in this training executable script file.
-# =============================================================================
 
 # =============================================================================
 # SECTION: Import Libraries
