@@ -123,8 +123,8 @@ The model configurations were validated on both Clean and Occluded (visual data 
 =============================================
 Model              | Camera   | Radar    | Test Clean IoU | Test Occluded IoU
 ---------------------------------------------------------------------------
-Vision-Only        | Active   | Ignored  | 0.0729         | 0.0729           
-Radar-Only         | Ignored  | Active   | 0.7196         | 0.7197           
+Vision-Only        | Active   | Ignored  | 0.0740         | 0.0740           
+Radar-Only         | Ignored  | Active   | 0.6295         | 0.6295           
 RadVision (Fused)  | Active   | Active   | 0.0352         | 0.0352           
 =============================================
 ```
@@ -133,7 +133,10 @@ RadVision (Fused)  | Active   | Active   | 0.0352         | 0.0352
 
 ## 💻 Interactive Visualizer App
 
-The project includes an interactive **Streamlit dashboard** allowing users to select evaluation samples, adjust the camera visual occlusion level slider, and view raw sensor feeds, predicted bounding boxes, and live cross-attention routing weights.
+The project includes an interactive **Streamlit dashboard** allowing users to select evaluation samples, adjust the camera visual occlusion level slider, and view raw sensor feeds, predicted bounding boxes, and live cross-attention routing weights. 
+
+By default, the dashboard trains the encoders and regressor head on startup for **15 epochs** with a stable learning rate of **`0.001`**, allowing the radar-only branch coordinates to converge to a near-perfect **`0.8862` IoU** score.
+
 
 ---
 
