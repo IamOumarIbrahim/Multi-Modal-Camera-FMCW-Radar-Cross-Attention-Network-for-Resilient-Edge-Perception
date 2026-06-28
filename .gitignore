@@ -1,2 +1,6 @@
 .agents/AGENTS.md
 .agents/skills/
+__pycache__/
+**/__pycache__/
+*.pyc
+radvision_model.pth
