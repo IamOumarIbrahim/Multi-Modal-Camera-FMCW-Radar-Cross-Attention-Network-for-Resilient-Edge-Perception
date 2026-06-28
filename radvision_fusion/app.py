@@ -42,11 +42,32 @@ def train_and_cache_models():
     RadarModel = RadVisionFusionModel(ModelInit_LatentDim=CONFIG_LATENT_DIM, ModelInit_Mode="radar_only")
     FusedModel = RadVisionFusionModel(ModelInit_LatentDim=CONFIG_LATENT_DIM, ModelInit_Mode="fused")
     
-    # Train each model briefly for 5 epochs
+    # Train each model briefly
     for ModelItem, ModelName in [(VisionModel, "Vision-Only"), (RadarModel, "Radar-Only"), (FusedModel, "RadVision (Fused)")]:
+        # Freeze ResNet backbone parameters to speed up CPU training
+        for Param in ModelItem.ModelInit_VisionEncoder.VisionInit_Backbone.parameters():
+            Param.requires_grad = False
+            
+        # Freeze custom radar RD CNN feature extractor parameters
+        for Param in ModelItem.ModelInit_RadarEncoderRD.parameters():
+            Param.requires_grad = False
+        # Enable gradient training specifically for the projection layer
+        for Param in ModelItem.ModelInit_RadarEncoderRD.RadarInit_Projection.parameters():
+            Param.requires_grad = True
+            
+        # Freeze custom radar RA CNN feature extractor parameters
+        for Param in ModelItem.ModelInit_RadarEncoderRA.parameters():
+            Param.requires_grad = False
+        # Enable gradient training specifically for the projection layer
+        for Param in ModelItem.ModelInit_RadarEncoderRA.RadarInit_Projection.parameters():
+            Param.requires_grad = True
+
+        # Set model in training mode
         ModelItem.train()
-        Optimizer = torch.optim.Adam(ModelItem.parameters(), lr=0.001)
-        for Epoch in range(5):
+        # Optimize only parameter tensors requiring gradients with increased learning rate for fast fit
+        Optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, ModelItem.parameters()), lr=0.01)
+        # Train for 20 epochs to ensure coordinate regression convergence
+        for Epoch in range(20):
             for Batch in DataLoaderInstance:
                 Optimizer.zero_grad()
                 ClassLogit, BBoxPred, _ = ModelItem(
@@ -67,7 +88,7 @@ def train_and_cache_models():
 # Configure general Streamlit page properties
 st.set_page_config(
     page_title="RadVision-Fusion: Resilient Multi-Modal Perception",
-    page_icon="📡",
+    page_icon="chart",
     layout="wide"
 )
 
@@ -96,8 +117,8 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Main Title & Subtitle Banner
-st.title("📡 RadVision-Fusion")
-st.subheader("Multi-Modal Camera–FMCW Radar Cross-Attention Network for Resilient Edge Perception")
+st.title("RadVision-Fusion")
+st.subheader("Multi-Modal Camera-FMCW Radar Cross-Attention Network for Resilient Edge Perception")
 st.markdown("---")
 
 # Load trained models from cache
@@ -107,7 +128,7 @@ VisionModel, RadarModel, FusedModel = train_and_cache_models()
 DatasetInstance = RadVisionDataset(DatasetInit_NumSamples=20)
 
 # Sidebar layout for user control inputs
-st.sidebar.header("🎛️ Simulation Controls")
+st.sidebar.header("Simulation Controls")
 SampleIndex = st.sidebar.slider("Select Sample Index", 0, 19, 0)
 OcclusionLevel = st.sidebar.slider("Camera Visual Occlusion Level", 0.0, 1.0, 0.5, step=0.1)
 
@@ -148,11 +169,11 @@ IoURadar = compute_iou_metric(BBoxRadarPred[0].numpy(), BBoxTrue)
 IoUFused = compute_iou_metric(BBoxFusedPred[0].numpy(), BBoxTrue)
 
 # Main Dashboard Columns: Raw Feeds
-st.header("🖼️ Raw Sensor Feeds & Modality Visualizations")
+st.header("Raw Sensor Feeds & Modality Visualizations")
 ColFeed1, ColFeed2, ColFeed3 = st.columns(3)
 
 with ColFeed1:
-    st.subheader("📸 Camera Feed (RGB)")
+    st.subheader("Camera Feed (RGB)")
     # Render camera image using matplotlib with bounding box overlays
     FigCam, AxCam = plt.subplots(figsize=(4, 4))
     # Permute shape to standard matplotlib HWC format
@@ -182,7 +203,7 @@ with ColFeed1:
     st.pyplot(FigCam)
 
 with ColFeed2:
-    st.subheader("📈 Range-Doppler Heatmap")
+    st.subheader("Range-Doppler Heatmap")
     # Render RD Map using matplotlib viridis colormap
     FigRD, AxRD = plt.subplots(figsize=(4, 4))
     RDNP = RadarRD[0].numpy()
@@ -194,7 +215,7 @@ with ColFeed2:
     st.pyplot(FigRD)
 
 with ColFeed3:
-    st.subheader("📐 Range-Angle Heatmap")
+    st.subheader("Range-Angle Heatmap")
     # Render RA Map using matplotlib magma colormap
     FigRA, AxRA = plt.subplots(figsize=(4, 4))
     RANP = RadarRA[0].numpy()
@@ -208,7 +229,7 @@ with ColFeed3:
 st.markdown("---")
 
 # Metrics Summary Cards
-st.header("📊 Real-Time Bounding Box IoU Metrics")
+st.header("Real-Time Bounding Box IoU Metrics")
 ColM1, ColM2, ColM3 = st.columns(3)
 
 with ColM1:
@@ -238,8 +259,8 @@ with ColM3:
 st.markdown("---")
 
 # Cross-Attention Weights Visualization
-st.header("🧠 Cross-Attention Matrix Heatmap")
-st.markdown("Visualizes attention routing from Camera Queries ($Q$, 49 spatial patches) to Radar Keys/Values ($K/V$, 320 patches).")
+st.header("Cross-Attention Matrix Heatmap")
+st.markdown("Visualizes attention routing from Camera Queries (Q, 49 spatial patches) to Radar Keys/Values (K/V, 320 patches).")
 
 if AttnWeights is not None:
     # Extract weights tensor: [Batch, 49, 320] -> [49, 320]
