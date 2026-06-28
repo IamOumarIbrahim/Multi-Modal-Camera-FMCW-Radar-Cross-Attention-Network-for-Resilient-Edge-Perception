@@ -44,30 +44,12 @@ def train_and_cache_models():
     
     # Train each model briefly
     for ModelItem, ModelName in [(VisionModel, "Vision-Only"), (RadarModel, "Radar-Only"), (FusedModel, "RadVision (Fused)")]:
-        # Freeze ResNet backbone parameters to speed up CPU training
-        for Param in ModelItem.ModelInit_VisionEncoder.VisionInit_Backbone.parameters():
-            Param.requires_grad = False
-            
-        # Freeze custom radar RD CNN feature extractor parameters
-        for Param in ModelItem.ModelInit_RadarEncoderRD.parameters():
-            Param.requires_grad = False
-        # Enable gradient training specifically for the projection layer
-        for Param in ModelItem.ModelInit_RadarEncoderRD.RadarInit_Projection.parameters():
-            Param.requires_grad = True
-            
-        # Freeze custom radar RA CNN feature extractor parameters
-        for Param in ModelItem.ModelInit_RadarEncoderRA.parameters():
-            Param.requires_grad = False
-        # Enable gradient training specifically for the projection layer
-        for Param in ModelItem.ModelInit_RadarEncoderRA.RadarInit_Projection.parameters():
-            Param.requires_grad = True
-
         # Set model in training mode
         ModelItem.train()
-        # Optimize only parameter tensors requiring gradients with increased learning rate for fast fit
-        Optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, ModelItem.parameters()), lr=0.01)
-        # Train for 20 epochs to ensure coordinate regression convergence
-        for Epoch in range(20):
+        # Optimize all parameters with a stable learning rate of 0.001
+        Optimizer = torch.optim.Adam(ModelItem.parameters(), lr=0.001)
+        # Train for 15 epochs to ensure stable bounding box coordinate convergence
+        for Epoch in range(15):
             for Batch in DataLoaderInstance:
                 Optimizer.zero_grad()
                 ClassLogit, BBoxPred, _ = ModelItem(
